@@ -32,6 +32,10 @@ final class TerminalViewController: NSViewController, LocalProcessTerminalViewDe
         terminalContainer.layer?.cornerRadius = 8
         terminalContainer.layer?.masksToBounds = true
         terminalContainer.layer?.backgroundColor = NSColor.black.cgColor
+        terminalContainer.layer?.shadowColor = NSColor.black.cgColor
+        terminalContainer.layer?.shadowOpacity = 0.8
+        terminalContainer.layer?.shadowRadius = 12
+        terminalContainer.layer?.shadowOffset = CGSize(width: 0, height: -4)
         terminalContainer.layer?.borderWidth = 0
         terminalContainer.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(terminalContainer)
@@ -39,9 +43,6 @@ final class TerminalViewController: NSViewController, LocalProcessTerminalViewDe
         let terminal = LocalProcessTerminalView(frame: .zero)
         terminal.translatesAutoresizingMaskIntoConstraints = false
         terminal.processDelegate = self
-        terminal.caretColor = .systemGreen
-        terminal.caretTextColor = .black
-        terminal.nativeForegroundColor = .systemPurple
         terminal.nativeBackgroundColor = terminalBackgroundColor
         terminal.getTerminal().setCursorStyle(.steadyBlock)
         terminalContainer.addSubview(terminal)
