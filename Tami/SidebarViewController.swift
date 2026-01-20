@@ -546,7 +546,7 @@ extension SidebarViewController: NSTableViewDataSource, NSTableViewDelegate {
     func tableView(_ tableView: NSTableView, acceptDrop info: NSDraggingInfo, row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
         let pasteboard = info.draggingPasteboard
         if let data = pasteboard.data(forType: .tamiFavoriteIndex),
-           let indexSet = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(data) as? IndexSet {
+           let indexSet = try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSIndexSet.self], from: data) as? IndexSet {
             let destination = min(max(row, 0), FavoritesManager.shared.favorites.count)
             FavoritesManager.shared.moveFavorites(from: indexSet, to: destination)
             reloadFavorites()
