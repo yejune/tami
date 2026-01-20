@@ -381,7 +381,7 @@ class SidebarViewController: NSViewController {
         let row = favoritesTableView.clickedRow
         guard row >= 0 else { return }
         let favorite = FavoritesManager.shared.favorites[row]
-        onOpenTerminal?(favorite.path)
+        openFavoritePath(favorite.path)
     }
     
     @objc private func openFavoriteInTerminal(_ sender: Any) {
@@ -433,6 +433,16 @@ class SidebarViewController: NSViewController {
             FavoritesManager.shared.removeFavorite(at: index)
         }
         reloadFavorites()
+    }
+
+    private func openFavoritePath(_ path: String) {
+        let url = URL(fileURLWithPath: path)
+        var isDirectory: ObjCBool = false
+        if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue {
+            onOpenTerminal?(url.path)
+        } else {
+            onOpenFile?(url)
+        }
     }
 }
 
