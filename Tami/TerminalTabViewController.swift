@@ -4,7 +4,39 @@ final class TerminalTabViewController: NSTabViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        tabStyle = .segmentedControlOnTop
+        tabStyle = .unspecified
+        tabView.tabViewType = .topTabsBezelBorder
+        tabView.drawsBackground = true
+        tabView.wantsLayer = true
+        tabView.layer?.backgroundColor = NSColor.systemOrange.cgColor
+        view.wantsLayer = true
+        view.layer?.backgroundColor = NSColor.clear.cgColor
+
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(container)
+
+        NSLayoutConstraint.activate([
+            container.topAnchor.constraint(equalTo: view.topAnchor),
+            container.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
+            container.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+            container.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8)
+        ])
+
+        tabView.removeFromSuperview()
+        tabView.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(tabView)
+
+        NSLayoutConstraint.activate([
+            tabView.topAnchor.constraint(equalTo: container.topAnchor),
+            tabView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            tabView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            tabView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+
+        let rightClick = NSClickGestureRecognizer(target: self, action: #selector(handleTabRightClick(_:)))
+        rightClick.buttonMask = 0x2
+        tabView.addGestureRecognizer(rightClick)
     }
     
     func openTerminal(at path: String) {
@@ -27,5 +59,23 @@ final class TerminalTabViewController: NSTabViewController {
         addTabViewItem(tabItem)
         selectedTabViewItemIndex = tabViewItems.count - 1
         terminalVC.openTerminal(at: path)
+    }
+
+    @objc private func handleTabRightClick(_ sender: NSClickGestureRecognizer) {
+        let point = sender.location(in: tabView)
+        guard let tabViewItem = tabView.tabViewItem(at: point) else { return }
+
+        let menu = NSMenu()
+        let closeItem = NSMenuItem(title: "Close Tab", action: #selector(closeTabFromMenu(_:)), keyEquivalent: "")
+        closeItem.target = self
+        closeItem.representedObject = tabViewItem
+        menu.addItem(closeItem)
+
+        NSMenu.popUpContextMenu(menu, with: NSApp.currentEvent ?? NSEvent(), for: tabView)
+    }
+
+    @objc private func closeTabFromMenu(_ sender: NSMenuItem) {
+        guard let tabViewItem = sender.representedObject as? NSTabViewItem else { return }
+        removeTabViewItem(tabViewItem)
     }
 }

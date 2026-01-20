@@ -7,8 +7,8 @@ final class TerminalViewController: NSViewController, LocalProcessTerminalViewDe
 
     private(set) var currentPath: String = ""
 
-    private let backgroundColor = NSColor.clear
-    private let terminalBackgroundColor = NSColor.black
+    private let backgroundColor = NSColor.systemRed
+    private let terminalBackgroundColor = NSColor.clear
 
     override func loadView() {
         let effectView = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 500, height: 400))
@@ -29,11 +29,10 @@ final class TerminalViewController: NSViewController, LocalProcessTerminalViewDe
 
         terminalContainer = NSView()
         terminalContainer.wantsLayer = true
-        terminalContainer.layer?.cornerRadius = 10
+        terminalContainer.layer?.cornerRadius = 8
         terminalContainer.layer?.masksToBounds = true
-        terminalContainer.layer?.backgroundColor = terminalBackgroundColor.cgColor
-        terminalContainer.layer?.borderWidth = 1
-        terminalContainer.layer?.borderColor = NSColor.black.withAlphaComponent(0.6).cgColor
+        terminalContainer.layer?.backgroundColor = NSColor.black.cgColor
+        terminalContainer.layer?.borderWidth = 0
         terminalContainer.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(terminalContainer)
 
@@ -42,22 +41,23 @@ final class TerminalViewController: NSViewController, LocalProcessTerminalViewDe
         terminal.processDelegate = self
         terminal.caretColor = .systemGreen
         terminal.caretTextColor = .black
-        terminal.nativeForegroundColor = .white
+        terminal.nativeForegroundColor = .systemPurple
         terminal.nativeBackgroundColor = terminalBackgroundColor
         terminal.getTerminal().setCursorStyle(.steadyBlock)
         terminalContainer.addSubview(terminal)
         terminalView = terminal
 
+        let containerInset: CGFloat = 0
         NSLayoutConstraint.activate([
-            terminalContainer.topAnchor.constraint(equalTo: view.topAnchor, constant: 8),
-            terminalContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
-            terminalContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
-            terminalContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8),
+            terminalContainer.topAnchor.constraint(equalTo: view.topAnchor, constant: containerInset),
+            terminalContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: containerInset),
+            terminalContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -containerInset),
+            terminalContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -containerInset),
 
-            terminal.topAnchor.constraint(equalTo: terminalContainer.topAnchor, constant: 10),
-            terminal.leadingAnchor.constraint(equalTo: terminalContainer.leadingAnchor, constant: 10),
-            terminal.trailingAnchor.constraint(equalTo: terminalContainer.trailingAnchor, constant: -10),
-            terminal.bottomAnchor.constraint(equalTo: terminalContainer.bottomAnchor, constant: -10)
+            terminal.topAnchor.constraint(equalTo: terminalContainer.topAnchor, constant: 8),
+            terminal.leadingAnchor.constraint(equalTo: terminalContainer.leadingAnchor, constant: 8),
+            terminal.trailingAnchor.constraint(equalTo: terminalContainer.trailingAnchor, constant: -8),
+            terminal.bottomAnchor.constraint(equalTo: terminalContainer.bottomAnchor, constant: -8)
         ])
     }
 

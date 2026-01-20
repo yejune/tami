@@ -61,11 +61,10 @@ class SidebarViewController: NSViewController {
     var onOpenTerminal: ((String) -> Void)?
     
     override func loadView() {
-        let effectView = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 250, height: 500))
-        effectView.material = .sidebar
-        effectView.state = .active
-        effectView.blendingMode = .behindWindow
-        view = effectView
+        let baseView = NSView(frame: NSRect(x: 0, y: 0, width: 250, height: 500))
+        baseView.wantsLayer = true
+        baseView.layer?.backgroundColor = NSColor.clear.cgColor
+        view = baseView
     }
     
     override func viewDidLoad() {
