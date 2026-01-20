@@ -48,14 +48,29 @@ class SidebarViewController: NSViewController {
     private var favoritesTableView: NSTableView!
     private var favoritesScrollView: NSScrollView!
     private var favoritesContainerView: NSView!
+    private var favoritesHeader: NSTextField!
     private var emptyFavoritesLabel: NSTextField!
     private var favoritesHeightConstraint: NSLayoutConstraint!
+    private var dividerView: ResizeDividerView!
+    private var folderHeader: NSTextField!
+    private var isFavoritesHeightUserAdjusted = false
+    private var dragStartFavoritesHeight: CGFloat = 0
     
     // 폴더 트리뷰
     private var outlineView: ToggleOutlineView!
     private var folderScrollView: NSScrollView!
     
     private var rootNode: FolderNode!
+
+    private let containerInset: CGFloat = 10
+    private let headerTopPadding: CGFloat = 10
+    private let headerHorizontalPadding: CGFloat = 10
+    private let listHorizontalPadding: CGFloat = 0
+    private let headerToListSpacing: CGFloat = 2
+    private let sectionSpacing: CGFloat = 6
+    private let dividerHeight: CGFloat = 8
+    private let rowHeight: CGFloat = 24
+    private let minFolderHeight: CGFloat = 120
     
     // 터미널 열기 콜백
     var onOpenTerminal: ((String) -> Void)?
@@ -80,14 +95,6 @@ class SidebarViewController: NSViewController {
     }
     
     private func setupUI() {
-        let containerInset: CGFloat = 10
-        let headerTopPadding: CGFloat = 10
-        let headerHorizontalPadding: CGFloat = 10
-        let listHorizontalPadding: CGFloat = 0
-        let headerToListSpacing: CGFloat = 2
-        let sectionSpacing: CGFloat = 10
-        let rowHeight: CGFloat = 24
-
         let containerEffectView = NSVisualEffectView()
         containerEffectView.material = .sidebar
         containerEffectView.state = .active
@@ -100,7 +107,7 @@ class SidebarViewController: NSViewController {
         view.addSubview(containerView)
 
         // ===== 즐겨찾기 섹션 =====
-        let favoritesHeader = NSTextField(labelWithString: "Favorites")
+        favoritesHeader = NSTextField(labelWithString: "Favorites")
         favoritesHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         favoritesHeader.textColor = NSColor.secondaryLabelColor
         favoritesHeader.translatesAutoresizingMaskIntoConstraints = false
@@ -157,8 +164,23 @@ class SidebarViewController: NSViewController {
         favoritesContainerView.addSubview(emptyFavoritesLabel)
         
         // ===== 구분선 =====
+        dividerView = ResizeDividerView()
+        dividerView.translatesAutoresizingMaskIntoConstraints = false
+        dividerView.wantsLayer = true
+        dividerView.layer?.backgroundColor = NSColor.clear.cgColor
+        containerView.addSubview(dividerView)
+
+        let dividerLine = NSView()
+        dividerLine.translatesAutoresizingMaskIntoConstraints = false
+        dividerLine.wantsLayer = true
+        dividerLine.layer?.backgroundColor = NSColor.separatorColor.cgColor
+        dividerView.addSubview(dividerLine)
+
+        let dividerPan = NSPanGestureRecognizer(target: self, action: #selector(handleDividerPan(_:)))
+        dividerView.addGestureRecognizer(dividerPan)
+
         // ===== 폴더 트리 섹션 =====
-        let folderHeader = NSTextField(labelWithString: "Home")
+        folderHeader = NSTextField(labelWithString: "Home")
         folderHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         folderHeader.textColor = NSColor.secondaryLabelColor
         folderHeader.translatesAutoresizingMaskIntoConstraints = false
@@ -231,8 +253,13 @@ class SidebarViewController: NSViewController {
             favoritesContainerView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: listHorizontalPadding),
             favoritesContainerView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -listHorizontalPadding),
             
+            dividerView.topAnchor.constraint(equalTo: favoritesContainerView.bottomAnchor, constant: sectionSpacing),
+            dividerView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            dividerView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            dividerView.heightAnchor.constraint(equalToConstant: dividerHeight),
+
             // 폴더 헤더
-            folderHeader.topAnchor.constraint(equalTo: favoritesContainerView.bottomAnchor, constant: sectionSpacing),
+            folderHeader.topAnchor.constraint(equalTo: dividerView.bottomAnchor, constant: sectionSpacing),
             folderHeader.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: headerHorizontalPadding),
             folderHeader.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -headerHorizontalPadding),
             
@@ -257,6 +284,15 @@ class SidebarViewController: NSViewController {
             emptyFavoritesLabel.leadingAnchor.constraint(equalTo: favoritesContainerView.leadingAnchor),
             emptyFavoritesLabel.trailingAnchor.constraint(equalTo: favoritesContainerView.trailingAnchor)
         ])
+
+        if let dividerLine = dividerView.subviews.first {
+            NSLayoutConstraint.activate([
+                dividerLine.centerYAnchor.constraint(equalTo: dividerView.centerYAnchor),
+                dividerLine.leadingAnchor.constraint(equalTo: dividerView.leadingAnchor),
+                dividerLine.trailingAnchor.constraint(equalTo: dividerView.trailingAnchor),
+                dividerLine.heightAnchor.constraint(equalToConstant: 1)
+            ])
+        }
     }
 
     private func updateSidebarColors() {
@@ -276,6 +312,9 @@ class SidebarViewController: NSViewController {
     }
 
     private func updateFavoritesHeight() {
+        if isFavoritesHeightUserAdjusted {
+            return
+        }
         let rows = FavoritesManager.shared.favorites.count
         let contentHeight = CGFloat(rows) * favoritesTableView.rowHeight
         let maxHeight: CGFloat = 200
@@ -287,6 +326,43 @@ class SidebarViewController: NSViewController {
             favoritesHeightConstraint.constant = min(contentHeight, maxHeight)
             favoritesScrollView.isHidden = false
             emptyFavoritesLabel.isHidden = true
+        }
+        containerView?.layoutSubtreeIfNeeded()
+        favoritesHeightConstraint.constant = clampFavoritesHeight(favoritesHeightConstraint.constant)
+    }
+
+    private func clampFavoritesHeight(_ height: CGFloat) -> CGFloat {
+        guard let containerView else { return height }
+        containerView.layoutSubtreeIfNeeded()
+        let favoritesHeaderHeight = favoritesHeader.intrinsicContentSize.height
+        let folderHeaderHeight = folderHeader.intrinsicContentSize.height
+        let fixed = headerTopPadding
+            + favoritesHeaderHeight
+            + headerToListSpacing
+            + sectionSpacing
+            + dividerHeight
+            + sectionSpacing
+            + folderHeaderHeight
+            + headerToListSpacing
+        let maxHeight = max(0, containerView.bounds.height - fixed - minFolderHeight)
+        let minHeight: CGFloat = 0
+        return min(max(height, minHeight), maxHeight)
+    }
+
+    @objc private func handleDividerPan(_ recognizer: NSPanGestureRecognizer) {
+        guard let containerView else { return }
+        let translation = recognizer.translation(in: containerView)
+        switch recognizer.state {
+        case .began:
+            isFavoritesHeightUserAdjusted = true
+            dragStartFavoritesHeight = favoritesHeightConstraint.constant
+        case .changed:
+            let newHeight = dragStartFavoritesHeight - translation.y
+            favoritesHeightConstraint.constant = clampFavoritesHeight(newHeight)
+        case .ended, .cancelled:
+            favoritesHeightConstraint.constant = clampFavoritesHeight(favoritesHeightConstraint.constant)
+        default:
+            break
         }
     }
     
@@ -347,6 +423,13 @@ class SidebarViewController: NSViewController {
             FavoritesManager.shared.removeFavorite(at: index)
         }
         reloadFavorites()
+    }
+}
+
+final class ResizeDividerView: NSView {
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .resizeUpDown)
     }
 }
 
