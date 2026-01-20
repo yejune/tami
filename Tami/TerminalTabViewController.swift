@@ -62,6 +62,26 @@ final class TerminalTabViewController: NSTabViewController {
         terminalVC.openTerminal(at: path)
     }
 
+    func openFile(at url: URL) {
+        if let existingIndex = tabViewItems.firstIndex(where: { item in
+            guard let editorVC = item.viewController as? EditorViewController else { return false }
+            return editorVC.currentPath == url.path
+        }) {
+            selectedTabViewItemIndex = existingIndex
+            return
+        }
+
+        let editorVC = EditorViewController()
+        editorVC.loadViewIfNeeded()
+
+        let tabItem = NSTabViewItem(viewController: editorVC)
+        tabItem.label = url.lastPathComponent
+
+        addTabViewItem(tabItem)
+        selectedTabViewItemIndex = tabViewItems.count - 1
+        editorVC.openFile(at: url)
+    }
+
     @objc private func handleTabRightClick(_ sender: NSClickGestureRecognizer) {
         let point = sender.location(in: tabView)
         guard let tabViewItem = tabView.tabViewItem(at: point) else { return }

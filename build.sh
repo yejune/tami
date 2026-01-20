@@ -19,6 +19,7 @@ SOURCES=(
     "Tami/MainWindowController.swift"
     "Tami/MainSplitViewController.swift"
     "Tami/TerminalTabViewController.swift"
+    "Tami/EditorViewController.swift"
     "Tami/SidebarViewController.swift"
     "Tami/TerminalViewController.swift"
     "Tami/FavoritesManager.swift"

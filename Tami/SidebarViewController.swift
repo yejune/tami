@@ -74,6 +74,7 @@ class SidebarViewController: NSViewController {
     
     // 터미널 열기 콜백
     var onOpenTerminal: ((String) -> Void)?
+    var onOpenFile: ((URL) -> Void)?
     
     override func loadView() {
         let effectView = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 250, height: 500))
@@ -226,6 +227,14 @@ class SidebarViewController: NSViewController {
         outlineView.delegate = self
         outlineView.setDraggingSourceOperationMask(.copy, forLocal: true)
         outlineView.setDraggingSourceOperationMask(.copy, forLocal: false)
+        outlineView.onDoubleClickItem = { [weak self] item in
+            guard let self, let node = item as? FolderNode else { return }
+            if node.isDirectory {
+                self.onOpenTerminal?(node.url.path)
+            } else {
+                self.onOpenFile?(node.url)
+            }
+        }
         
         // 폴더 우클릭 메뉴
         let folderMenu = NSMenu()
@@ -417,6 +426,7 @@ class SidebarViewController: NSViewController {
         onOpenTerminal?(item.url.path)
     }
 
+
     private func removeFavorites(at indexes: IndexSet) {
         guard !indexes.isEmpty else { return }
         for index in indexes.sorted(by: >) {
@@ -527,10 +537,17 @@ extension SidebarViewController: NSOutlineViewDelegate {
 
 final class ToggleOutlineView: NSOutlineView {
     var onToggleItem: ((Any) -> Void)?
+    var onDoubleClickItem: ((Any) -> Void)?
 
     override func mouseDown(with event: NSEvent) {
         let clickPoint = convert(event.locationInWindow, from: nil)
         let row = row(at: clickPoint)
+
+        if event.clickCount == 2, row >= 0, let item = item(atRow: row) {
+            super.mouseDown(with: event)
+            onDoubleClickItem?(item)
+            return
+        }
 
         if row >= 0 {
             let outlineCellRect = frameOfOutlineCell(atRow: row)

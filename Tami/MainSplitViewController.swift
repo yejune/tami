@@ -27,6 +27,9 @@ class MainSplitViewController: NSSplitViewController {
         sidebarViewController.onOpenTerminal = { [weak self] path in
             self?.terminalTabViewController.openTerminal(at: path)
         }
+        sidebarViewController.onOpenFile = { [weak self] url in
+            self?.terminalTabViewController.openFile(at: url)
+        }
 
         let homePath = FileManager.default.homeDirectoryForCurrentUser.path
         terminalTabViewController.openTerminal(at: homePath)
