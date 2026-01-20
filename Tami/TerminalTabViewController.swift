@@ -16,11 +16,12 @@ final class TerminalTabViewController: NSTabViewController {
         container.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(container)
 
+        let containerInset: CGFloat = 10
         NSLayoutConstraint.activate([
             container.topAnchor.constraint(equalTo: view.topAnchor),
-            container.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
-            container.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
-            container.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8)
+            container.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: containerInset),
+            container.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -containerInset),
+            container.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -containerInset)
         ])
 
         tabView.removeFromSuperview()

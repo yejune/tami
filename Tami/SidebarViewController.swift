@@ -61,10 +61,11 @@ class SidebarViewController: NSViewController {
     var onOpenTerminal: ((String) -> Void)?
     
     override func loadView() {
-        let baseView = NSView(frame: NSRect(x: 0, y: 0, width: 250, height: 500))
-        baseView.wantsLayer = true
-        baseView.layer?.backgroundColor = NSColor.clear.cgColor
-        view = baseView
+        let effectView = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 250, height: 500))
+        effectView.material = .sidebar
+        effectView.state = .active
+        effectView.blendingMode = .behindWindow
+        view = effectView
     }
     
     override func viewDidLoad() {
@@ -72,10 +73,14 @@ class SidebarViewController: NSViewController {
         setupUI()
         loadHomeDirectory()
         updateFavoritesHeight()
+        updateSidebarColors()
+    }
+
+    deinit {
     }
     
     private func setupUI() {
-        let containerInset: CGFloat = 8
+        let containerInset: CGFloat = 10
         let headerTopPadding: CGFloat = 10
         let headerHorizontalPadding: CGFloat = 10
         let listHorizontalPadding: CGFloat = 0
@@ -83,10 +88,14 @@ class SidebarViewController: NSViewController {
         let sectionSpacing: CGFloat = 10
         let rowHeight: CGFloat = 24
 
-        containerView = NSView()
-        containerView.wantsLayer = true
-        containerView.layer?.cornerRadius = 10
-        containerView.layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.9).cgColor
+        let containerEffectView = NSVisualEffectView()
+        containerEffectView.material = .sidebar
+        containerEffectView.state = .active
+        containerEffectView.blendingMode = .withinWindow
+        containerEffectView.wantsLayer = true
+        containerEffectView.layer?.cornerRadius = 10
+        containerEffectView.layer?.masksToBounds = true
+        containerView = containerEffectView
         containerView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(containerView)
 
@@ -248,6 +257,10 @@ class SidebarViewController: NSViewController {
             emptyFavoritesLabel.leadingAnchor.constraint(equalTo: favoritesContainerView.leadingAnchor),
             emptyFavoritesLabel.trailingAnchor.constraint(equalTo: favoritesContainerView.trailingAnchor)
         ])
+    }
+
+    private func updateSidebarColors() {
+        containerView?.layer?.backgroundColor = NSColor.clear.cgColor
     }
     
     private func loadHomeDirectory() {
