@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# FolderNavigator Build Script
+# Tami Build Script
 # macOS AppKit 앱 빌드 스크립트
 
 set -e
@@ -14,14 +14,14 @@ RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 
 # 소스 파일들
 SOURCES=(
-    "FolderNavigator/main.swift"
-    "FolderNavigator/AppDelegate.swift"
-    "FolderNavigator/MainWindowController.swift"
-    "FolderNavigator/MainSplitViewController.swift"
-    "FolderNavigator/TerminalTabViewController.swift"
-    "FolderNavigator/SidebarViewController.swift"
-    "FolderNavigator/TerminalViewController.swift"
-    "FolderNavigator/FavoritesManager.swift"
+    "Tami/main.swift"
+    "Tami/AppDelegate.swift"
+    "Tami/MainWindowController.swift"
+    "Tami/MainSplitViewController.swift"
+    "Tami/TerminalTabViewController.swift"
+    "Tami/SidebarViewController.swift"
+    "Tami/TerminalViewController.swift"
+    "Tami/FavoritesManager.swift"
 )
 
 # SwiftTerm 소스 추가 (macOS 기본 bash 호환)
@@ -51,7 +51,7 @@ swiftc \
 
 # Info.plist 복사
 echo "📋 Copying Info.plist..."
-cp "FolderNavigator/Info.plist" "${CONTENTS_DIR}/Info.plist"
+cp "Tami/Info.plist" "${CONTENTS_DIR}/Info.plist"
 
 # PkgInfo 생성
 echo "APPL????" > "${CONTENTS_DIR}/PkgInfo"
