@@ -1,7 +1,7 @@
 import Cocoa
 import Highlighter
 
-final class EditorViewController: NSViewController {
+final class EditorViewController: NSViewController, NSMenuItemValidation {
 
     private let scrollView = NSScrollView()
     private var highlighter: Highlighter?
@@ -159,9 +159,12 @@ final class EditorViewController: NSViewController {
     }
 
     private func showImage(_ image: NSImage) {
+        let isPDF = (currentPath as NSString).pathExtension.lowercased() == "pdf"
         imageView.image = image
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageContainerView.frame = scrollView.contentView.bounds
+        imageContainerView.wantsLayer = true
+        imageContainerView.layer?.backgroundColor = (isPDF ? NSColor.white : NSColor.clear).cgColor
         scrollView.documentView = imageContainerView
 
         NSLayoutConstraint.deactivate(imageContainerView.constraints)
@@ -202,5 +205,82 @@ final class EditorViewController: NSViewController {
     private func isBinaryData(_ data: Data) -> Bool {
         if data.isEmpty { return false }
         return data.contains(0)
+    }
+
+    // MARK: - Save
+
+    func saveCurrentFile() -> Bool {
+        guard !currentPath.isEmpty else {
+            showAlert("No file", message: "No file is currently open.")
+            return false
+        }
+
+        let contents = textView.string
+
+        do {
+            try contents.write(toFile: currentPath, atomically: true, encoding: .utf8)
+            return true
+        } catch {
+            showAlert("Save Failed", message: error.localizedDescription)
+            return false
+        }
+    }
+
+    private func showAlert(_ title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    // MARK: - Edit Actions
+
+    @IBAction func cut(_ sender: Any?) {
+        textView.cut(sender)
+    }
+
+    @IBAction func copy(_ sender: Any?) {
+        textView.copy(sender)
+    }
+
+    @IBAction func paste(_ sender: Any?) {
+        textView.paste(sender)
+    }
+
+    override func selectAll(_ sender: Any?) {
+        textView.selectAll(sender)
+    }
+
+    @IBAction func undo(_ sender: Any?) {
+        textView.undoManager?.undo()
+    }
+
+    @IBAction func redo(_ sender: Any?) {
+        textView.undoManager?.redo()
+    }
+
+    // MARK: - Menu Validation
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        switch menuItem.action {
+        case #selector(cut(_:)):
+            return textView.selectedRange.length > 0
+        case #selector(copy(_:)):
+            return textView.selectedRange.length > 0
+        case #selector(paste(_:)):
+            return NSPasteboard.general.canReadObject(forClasses: [NSString.self], options: nil)
+        case #selector(undo(_:)):
+            return textView.undoManager?.canUndo ?? false
+        case #selector(redo(_:)):
+            return textView.undoManager?.canRedo ?? false
+        case #selector(selectAll(_:)):
+            return scrollView.documentView === textView
+        case #selector(performTextFinderAction(_:)):
+            return scrollView.documentView === textView
+        default:
+            return true
+        }
     }
 }

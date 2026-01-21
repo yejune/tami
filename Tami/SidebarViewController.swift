@@ -7,23 +7,23 @@ class FolderNode {
     var children: [FolderNode]?
     var isExpanded: Bool = false
     let isDirectory: Bool
-    
+
     init(url: URL) {
         self.url = url
         self.name = url.lastPathComponent
         self.isDirectory = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
     }
-    
+
     func loadChildren() {
         guard children == nil, isDirectory else { return }
-        
+
         do {
             let contents = try FileManager.default.contentsOfDirectory(
                 at: url,
                 includingPropertiesForKeys: [.isDirectoryKey],
                 options: [.skipsHiddenFiles]
             )
-            
+
             children = contents
                 .sorted { lhs, rhs in
                     let lhsIsDir = (try? lhs.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
@@ -40,8 +40,32 @@ class FolderNode {
     }
 }
 
+// Finder 스타일 사이드바 컨테이너 - 시스템 색상 사용
+final class SidebarContainerView: NSView {
+    var onAppearanceChange: (() -> Void)?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        commonInit()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        commonInit()
+    }
+
+    private func commonInit() {
+        wantsLayer = true
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        onAppearanceChange?()
+    }
+}
+
 class SidebarViewController: NSViewController {
-    
+
     private var containerView: NSView!
 
     // 즐겨찾기 테이블뷰
@@ -55,11 +79,11 @@ class SidebarViewController: NSViewController {
     private var folderHeader: NSTextField!
     private var isFavoritesHeightUserAdjusted = false
     private var dragStartFavoritesHeight: CGFloat = 0
-    
+
     // 폴더 트리뷰
     private var outlineView: ToggleOutlineView!
     private var folderScrollView: NSScrollView!
-    
+
     private var rootNode: FolderNode!
 
     private let containerInset: CGFloat = 10
@@ -71,11 +95,11 @@ class SidebarViewController: NSViewController {
     private let dividerHeight: CGFloat = 8
     private let rowHeight: CGFloat = 24
     private let minFolderHeight: CGFloat = 120
-    
+
     // 터미널 열기 콜백
     var onOpenTerminal: ((String) -> Void)?
     var onOpenFile: ((URL) -> Void)?
-    
+
     override func loadView() {
         let effectView = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 250, height: 500))
         effectView.material = .sidebar
@@ -83,9 +107,10 @@ class SidebarViewController: NSViewController {
         effectView.blendingMode = .behindWindow
         view = effectView
     }
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
+
         setupUI()
         loadHomeDirectory()
         updateFavoritesHeight()
@@ -94,15 +119,12 @@ class SidebarViewController: NSViewController {
 
     deinit {
     }
-    
+
     private func setupUI() {
-        let containerEffectView = NSVisualEffectView()
-        containerEffectView.material = .sidebar
-        containerEffectView.state = .active
-        containerEffectView.blendingMode = .withinWindow
-        containerEffectView.wantsLayer = true
-        containerEffectView.layer?.cornerRadius = 10
-        containerEffectView.layer?.masksToBounds = true
+        let containerEffectView = SidebarContainerView()
+        containerEffectView.onAppearanceChange = { [weak self] in
+            self?.updateSidebarColors()
+        }
         containerView = containerEffectView
         containerView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(containerView)
@@ -127,7 +149,7 @@ class SidebarViewController: NSViewController {
         favoritesScrollView.automaticallyAdjustsContentInsets = false
         favoritesScrollView.contentInsets = NSEdgeInsetsZero
         favoritesScrollView.contentView.contentInsets = NSEdgeInsetsZero
-        
+
         favoritesTableView = NSTableView()
         favoritesTableView.rowHeight = rowHeight
         favoritesTableView.headerView = nil
@@ -136,24 +158,24 @@ class SidebarViewController: NSViewController {
         favoritesTableView.intercellSpacing = NSSize(width: 0, height: 0)
         favoritesTableView.registerForDraggedTypes([.tamiFavoriteIndex, .fileURL])
         favoritesTableView.setDraggingSourceOperationMask(.move, forLocal: true)
-        
+
         let favColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("FavColumn"))
         favColumn.width = 200
         favColumn.isEditable = true
         favoritesTableView.addTableColumn(favColumn)
-        
+
         favoritesTableView.dataSource = self
         favoritesTableView.delegate = self
         favoritesTableView.target = self
         favoritesTableView.doubleAction = #selector(favoriteDoubleClicked(_:))
-        
+
         // 즐겨찾기 우클릭 메뉴
         let favMenu = NSMenu()
         favMenu.addItem(NSMenuItem(title: "Open in Terminal", action: #selector(openFavoriteInTerminal(_:)), keyEquivalent: ""))
         favMenu.addItem(NSMenuItem(title: "Rename", action: #selector(renameFavorite(_:)), keyEquivalent: ""))
         favMenu.addItem(NSMenuItem(title: "Remove from Favorites", action: #selector(removeFromFavorites(_:)), keyEquivalent: ""))
         favoritesTableView.menu = favMenu
-        
+
         favoritesScrollView.documentView = favoritesTableView
         favoritesContainerView.addSubview(favoritesScrollView)
 
@@ -163,7 +185,7 @@ class SidebarViewController: NSViewController {
         emptyFavoritesLabel.alignment = .center
         emptyFavoritesLabel.translatesAutoresizingMaskIntoConstraints = false
         favoritesContainerView.addSubview(emptyFavoritesLabel)
-        
+
         // ===== 구분선 =====
         dividerView = ResizeDividerView()
         dividerView.translatesAutoresizingMaskIntoConstraints = false
@@ -186,7 +208,7 @@ class SidebarViewController: NSViewController {
         folderHeader.textColor = NSColor.secondaryLabelColor
         folderHeader.translatesAutoresizingMaskIntoConstraints = false
         containerView.addSubview(folderHeader)
-        
+
         folderScrollView = NSScrollView()
         folderScrollView.translatesAutoresizingMaskIntoConstraints = false
         folderScrollView.hasVerticalScroller = true
@@ -196,7 +218,7 @@ class SidebarViewController: NSViewController {
         folderScrollView.automaticallyAdjustsContentInsets = false
         folderScrollView.contentInsets = NSEdgeInsetsZero
         folderScrollView.contentView.contentInsets = NSEdgeInsetsZero
-        
+
         outlineView = ToggleOutlineView()
         outlineView.headerView = nil
         outlineView.rowHeight = rowHeight
@@ -216,13 +238,13 @@ class SidebarViewController: NSViewController {
                 self.outlineView.expandItem(node)
             }
         }
-        
+
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("FolderColumn"))
         column.title = "Folders"
         column.width = 200
         outlineView.addTableColumn(column)
         outlineView.outlineTableColumn = column
-        
+
         outlineView.dataSource = self
         outlineView.delegate = self
         outlineView.setDraggingSourceOperationMask(.copy, forLocal: true)
@@ -235,16 +257,16 @@ class SidebarViewController: NSViewController {
                 self.onOpenFile?(node.url)
             }
         }
-        
+
         // 폴더 우클릭 메뉴
         let folderMenu = NSMenu()
         folderMenu.addItem(NSMenuItem(title: "Add to Favorites", action: #selector(addToFavorites(_:)), keyEquivalent: ""))
         folderMenu.addItem(NSMenuItem(title: "Open in Terminal", action: #selector(openFolderInTerminal(_:)), keyEquivalent: ""))
         outlineView.menu = folderMenu
-        
+
         folderScrollView.documentView = outlineView
         containerView.addSubview(folderScrollView)
-        
+
         // ===== 레이아웃 =====
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: view.topAnchor, constant: containerInset),
@@ -256,12 +278,12 @@ class SidebarViewController: NSViewController {
             favoritesHeader.topAnchor.constraint(equalTo: containerView.topAnchor, constant: headerTopPadding),
             favoritesHeader.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: headerHorizontalPadding),
             favoritesHeader.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -headerHorizontalPadding),
-            
+
             // 즐겨찾기 컨테이너
             favoritesContainerView.topAnchor.constraint(equalTo: favoritesHeader.bottomAnchor, constant: headerToListSpacing),
             favoritesContainerView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: listHorizontalPadding),
             favoritesContainerView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -listHorizontalPadding),
-            
+
             dividerView.topAnchor.constraint(equalTo: favoritesContainerView.bottomAnchor, constant: sectionSpacing),
             dividerView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             dividerView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
@@ -271,7 +293,7 @@ class SidebarViewController: NSViewController {
             folderHeader.topAnchor.constraint(equalTo: dividerView.bottomAnchor, constant: sectionSpacing),
             folderHeader.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: headerHorizontalPadding),
             folderHeader.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -headerHorizontalPadding),
-            
+
             // 폴더 트리 (나머지 공간)
             folderScrollView.topAnchor.constraint(equalTo: folderHeader.bottomAnchor, constant: headerToListSpacing),
             folderScrollView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
@@ -306,15 +328,16 @@ class SidebarViewController: NSViewController {
 
     private func updateSidebarColors() {
         containerView?.layer?.backgroundColor = NSColor.clear.cgColor
+        containerView?.layer?.borderColor = NSColor.clear.cgColor
     }
-    
+
     private func loadHomeDirectory() {
         let homeURL = FileManager.default.homeDirectoryForCurrentUser
         rootNode = FolderNode(url: homeURL)
         rootNode.loadChildren()
         outlineView.reloadData()
     }
-    
+
     func reloadFavorites() {
         favoritesTableView.reloadData()
         updateFavoritesHeight()
@@ -374,23 +397,23 @@ class SidebarViewController: NSViewController {
             break
         }
     }
-    
+
     // MARK: - Actions
-    
+
     @objc private func favoriteDoubleClicked(_ sender: Any) {
         let row = favoritesTableView.clickedRow
         guard row >= 0 else { return }
         let favorite = FavoritesManager.shared.favorites[row]
         openFavoritePath(favorite.path)
     }
-    
+
     @objc private func openFavoriteInTerminal(_ sender: Any) {
         let row = favoritesTableView.clickedRow
         guard row >= 0 else { return }
         let favorite = FavoritesManager.shared.favorites[row]
         onOpenTerminal?(favorite.path)
     }
-    
+
     @objc private func removeFromFavorites(_ sender: Any) {
         let row = favoritesTableView.clickedRow
         guard row >= 0 else { return }
@@ -405,18 +428,18 @@ class SidebarViewController: NSViewController {
         guard columnIndex >= 0 else { return }
         favoritesTableView.editColumn(columnIndex, row: row, with: nil, select: true)
     }
-    
+
     @objc private func addToFavorites(_ sender: Any) {
         let clickedRow = outlineView.clickedRow
         guard clickedRow >= 0,
               let item = outlineView.item(atRow: clickedRow) as? FolderNode else {
             return
         }
-        
+
         FavoritesManager.shared.addFavorite(item.url)
         reloadFavorites()
     }
-    
+
     @objc private func openFolderInTerminal(_ sender: Any) {
         let clickedRow = outlineView.clickedRow
         guard clickedRow >= 0,
@@ -425,7 +448,6 @@ class SidebarViewController: NSViewController {
         }
         onOpenTerminal?(item.url.path)
     }
-
 
     private func removeFavorites(at indexes: IndexSet) {
         guard !indexes.isEmpty else { return }
@@ -455,32 +477,32 @@ final class ResizeDividerView: NSView {
 
 // MARK: - NSOutlineViewDataSource
 extension SidebarViewController: NSOutlineViewDataSource {
-    
+
     func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
         if item == nil {
             return rootNode?.children?.count ?? 0
         }
-        
+
         if let node = item as? FolderNode {
             node.loadChildren()
             return node.children?.count ?? 0
         }
-        
+
         return 0
     }
-    
+
     func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
         if item == nil {
             return rootNode.children![index]
         }
-        
+
         if let node = item as? FolderNode {
             return node.children![index]
         }
-        
+
         fatalError("Unexpected item")
     }
-    
+
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
         if let node = item as? FolderNode {
             // Defer loading child directories to avoid triggering privacy prompts on launch.
@@ -499,17 +521,17 @@ extension SidebarViewController: NSOutlineViewDataSource {
 
 // MARK: - NSOutlineViewDelegate
 extension SidebarViewController: NSOutlineViewDelegate {
-    
+
     func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
         guard let node = item as? FolderNode else { return nil }
-        
+
         let identifier = NSUserInterfaceItemIdentifier("FolderCell")
         var cellView = outlineView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView
-        
+
         if cellView == nil {
             cellView = NSTableCellView()
             cellView?.identifier = identifier
-            
+
             let spacerView = NSView()
             spacerView.translatesAutoresizingMaskIntoConstraints = false
             cellView?.addSubview(spacerView)
@@ -518,28 +540,28 @@ extension SidebarViewController: NSOutlineViewDelegate {
             imageView.translatesAutoresizingMaskIntoConstraints = false
             cellView?.addSubview(imageView)
             cellView?.imageView = imageView
-            
+
             let textField = NSTextField(labelWithString: "")
             textField.translatesAutoresizingMaskIntoConstraints = false
             textField.lineBreakMode = .byTruncatingTail
             cellView?.addSubview(textField)
             cellView?.textField = textField
-            
+
             NSLayoutConstraint.activate([
                 imageView.leadingAnchor.constraint(equalTo: cellView!.leadingAnchor, constant: 2),
                 imageView.centerYAnchor.constraint(equalTo: cellView!.centerYAnchor),
                 imageView.widthAnchor.constraint(equalToConstant: 16),
                 imageView.heightAnchor.constraint(equalToConstant: 16),
-                
+
                 textField.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 4),
                 textField.trailingAnchor.constraint(equalTo: cellView!.trailingAnchor, constant: -2),
                 textField.centerYAnchor.constraint(equalTo: cellView!.centerYAnchor)
             ])
         }
-        
+
         cellView?.textField?.stringValue = node.name
         cellView?.imageView?.image = NSWorkspace.shared.icon(forFile: node.url.path)
-        
+
         return cellView
     }
 
@@ -572,21 +594,21 @@ final class ToggleOutlineView: NSOutlineView {
 
 // MARK: - NSTableViewDataSource & Delegate (Favorites)
 extension SidebarViewController: NSTableViewDataSource, NSTableViewDelegate {
-    
+
     func numberOfRows(in tableView: NSTableView) -> Int {
         return FavoritesManager.shared.favorites.count
     }
-    
+
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let favorite = FavoritesManager.shared.favorites[row]
         let identifier = NSUserInterfaceItemIdentifier("FavCell")
-        
+
         var cellView = tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView
-        
+
         if cellView == nil {
             cellView = NSTableCellView()
             cellView?.identifier = identifier
-            
+
             let spacerView = NSView()
             spacerView.translatesAutoresizingMaskIntoConstraints = false
             cellView?.addSubview(spacerView)
@@ -595,7 +617,7 @@ extension SidebarViewController: NSTableViewDataSource, NSTableViewDelegate {
             imageView.translatesAutoresizingMaskIntoConstraints = false
             cellView?.addSubview(imageView)
             cellView?.imageView = imageView
-            
+
             let textField = NSTextField()
             textField.translatesAutoresizingMaskIntoConstraints = false
             textField.lineBreakMode = .byTruncatingTail
@@ -606,7 +628,7 @@ extension SidebarViewController: NSTableViewDataSource, NSTableViewDelegate {
             textField.isSelectable = true
             cellView?.addSubview(textField)
             cellView?.textField = textField
-            
+
             NSLayoutConstraint.activate([
                 spacerView.leadingAnchor.constraint(equalTo: cellView!.leadingAnchor, constant: 2),
                 spacerView.centerYAnchor.constraint(equalTo: cellView!.centerYAnchor),
@@ -617,16 +639,16 @@ extension SidebarViewController: NSTableViewDataSource, NSTableViewDelegate {
                 imageView.centerYAnchor.constraint(equalTo: cellView!.centerYAnchor),
                 imageView.widthAnchor.constraint(equalToConstant: 16),
                 imageView.heightAnchor.constraint(equalToConstant: 16),
-                
+
                 textField.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 6),
                 textField.trailingAnchor.constraint(equalTo: cellView!.trailingAnchor, constant: -4),
                 textField.centerYAnchor.constraint(equalTo: cellView!.centerYAnchor)
             ])
         }
-        
+
         cellView?.textField?.stringValue = favorite.name
         cellView?.imageView?.image = NSWorkspace.shared.icon(forFile: favorite.path)
-        
+
         return cellView
     }
 
