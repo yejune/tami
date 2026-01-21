@@ -6,13 +6,15 @@ let package = Package(
     platforms: [.macOS(.v13)],
     dependencies: [
         .package(url: "https://github.com/smittytone/HighlighterSwift", from: "1.1.6"),
-        .package(path: "SwiftTerm")
+        .package(url: "https://github.com/apple/swift-markdown.git", from: "0.2.0"),
+        .package(url: "https://github.com/yejune/SwiftTerm", branch: "fix/reflow-wider-spaces")
     ],
     targets: [
         .executableTarget(
             name: "Tami",
             dependencies: [
                 .product(name: "Highlighter", package: "HighlighterSwift"),
+                .product(name: "Markdown", package: "swift-markdown"),
                 .product(name: "SwiftTerm", package: "SwiftTerm")
             ],
             path: "Tami",

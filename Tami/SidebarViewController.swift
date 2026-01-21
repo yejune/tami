@@ -64,7 +64,7 @@ final class SidebarContainerView: NSView {
     }
 }
 
-class SidebarViewController: NSViewController {
+class SidebarViewController: NSViewController, NSMenuItemValidation {
 
     private var containerView: NSView!
 
@@ -79,6 +79,8 @@ class SidebarViewController: NSViewController {
     private var folderHeader: NSTextField!
     private var isFavoritesHeightUserAdjusted = false
     private var dragStartFavoritesHeight: CGFloat = 0
+    private var folderMenu: NSMenu!
+    private var fileMenu: NSMenu!
 
     // 폴더 트리뷰
     private var outlineView: ToggleOutlineView!
@@ -258,11 +260,43 @@ class SidebarViewController: NSViewController {
             }
         }
 
-        // 폴더 우클릭 메뉴
-        let folderMenu = NSMenu()
-        folderMenu.addItem(NSMenuItem(title: "Add to Favorites", action: #selector(addToFavorites(_:)), keyEquivalent: ""))
-        folderMenu.addItem(NSMenuItem(title: "Open in Terminal", action: #selector(openFolderInTerminal(_:)), keyEquivalent: ""))
-        outlineView.menu = folderMenu
+        // 폴더/파일 우클릭 메뉴
+        folderMenu = NSMenu()
+        folderMenu.autoenablesItems = true
+        let addFavoriteFolderItem = NSMenuItem(title: "Add to Favorites", action: #selector(addToFavorites(_:)), keyEquivalent: "")
+        addFavoriteFolderItem.target = self
+        folderMenu.addItem(addFavoriteFolderItem)
+        let openTerminalFolderItem = NSMenuItem(title: "Open in Terminal", action: #selector(openFolderInTerminal(_:)), keyEquivalent: "")
+        openTerminalFolderItem.target = self
+        folderMenu.addItem(openTerminalFolderItem)
+
+        fileMenu = NSMenu()
+        fileMenu.autoenablesItems = true
+        let openEditorItem = NSMenuItem(title: "Open in Editor", action: #selector(openFileInEditor(_:)), keyEquivalent: "")
+        openEditorItem.target = self
+        fileMenu.addItem(openEditorItem)
+        let previewMarkdownItem = NSMenuItem(title: "Preview Markdown", action: #selector(previewMarkdown(_:)), keyEquivalent: "")
+        previewMarkdownItem.target = self
+        fileMenu.addItem(previewMarkdownItem)
+        let previewHTMLItem = NSMenuItem(title: "Preview HTML", action: #selector(previewHTML(_:)), keyEquivalent: "")
+        previewHTMLItem.target = self
+        fileMenu.addItem(previewHTMLItem)
+        fileMenu.addItem(NSMenuItem.separator())
+        let addFavoriteFileItem = NSMenuItem(title: "Add to Favorites", action: #selector(addToFavorites(_:)), keyEquivalent: "")
+        addFavoriteFileItem.target = self
+        fileMenu.addItem(addFavoriteFileItem)
+
+        outlineView.menuProvider = { [weak self] event in
+            guard let self else { return nil }
+            let point = self.outlineView.convert(event.locationInWindow, from: nil)
+            let row = self.outlineView.row(at: point)
+            guard row >= 0, let node = self.outlineView.item(atRow: row) as? FolderNode else { return nil }
+            self.outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+            if node.isDirectory {
+                return self.folderMenu
+            }
+            return self.fileMenu
+        }
 
         folderScrollView.documentView = outlineView
         containerView.addSubview(folderScrollView)
@@ -441,12 +475,55 @@ class SidebarViewController: NSViewController {
     }
 
     @objc private func openFolderInTerminal(_ sender: Any) {
-        let clickedRow = outlineView.clickedRow
-        guard clickedRow >= 0,
-              let item = outlineView.item(atRow: clickedRow) as? FolderNode else {
-            return
-        }
+        guard let item = clickedFolderNode() else { return }
         onOpenTerminal?(item.url.path)
+    }
+
+    @objc private func openFileInEditor(_ sender: Any) {
+        guard let item = clickedFolderNode(), !item.isDirectory else { return }
+        onOpenFile?(item.url)
+    }
+
+    @objc private func previewMarkdown(_ sender: Any) {
+        guard let item = clickedFolderNode(), !item.isDirectory else { return }
+        let ext = item.url.pathExtension.lowercased()
+        guard ext == "md" || ext == "markdown" else { return }
+        EditorViewController.requestPreview(for: item.url, mode: .markdown)
+        onOpenFile?(item.url)
+    }
+
+    @objc private func previewHTML(_ sender: Any) {
+        guard let item = clickedFolderNode(), !item.isDirectory else { return }
+        let ext = item.url.pathExtension.lowercased()
+        guard ext == "html" || ext == "htm" else { return }
+        EditorViewController.requestPreview(for: item.url, mode: .html)
+        onOpenFile?(item.url)
+    }
+
+    private func clickedFolderNode() -> FolderNode? {
+        let row = outlineView.clickedRow >= 0 ? outlineView.clickedRow : outlineView.selectedRow
+        guard row >= 0,
+              let item = outlineView.item(atRow: row) as? FolderNode else {
+            return nil
+        }
+        return item
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        guard let item = clickedFolderNode() else { return false }
+        let ext = item.url.pathExtension.lowercased()
+        switch menuItem.action {
+        case #selector(openFileInEditor(_:)):
+            return !item.isDirectory
+        case #selector(openFolderInTerminal(_:)):
+            return item.isDirectory
+        case #selector(previewMarkdown(_:)):
+            return !item.isDirectory && (ext == "md" || ext == "markdown")
+        case #selector(previewHTML(_:)):
+            return !item.isDirectory && (ext == "html" || ext == "htm")
+        default:
+            return true
+        }
     }
 
     private func removeFavorites(at indexes: IndexSet) {
@@ -570,6 +647,7 @@ extension SidebarViewController: NSOutlineViewDelegate {
 final class ToggleOutlineView: NSOutlineView {
     var onToggleItem: ((Any) -> Void)?
     var onDoubleClickItem: ((Any) -> Void)?
+    var menuProvider: ((NSEvent) -> NSMenu?)?
 
     override func mouseDown(with event: NSEvent) {
         let clickPoint = convert(event.locationInWindow, from: nil)
@@ -589,6 +667,10 @@ final class ToggleOutlineView: NSOutlineView {
         }
 
         super.mouseDown(with: event)
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        menuProvider?(event) ?? super.menu(for: event)
     }
 }
 
