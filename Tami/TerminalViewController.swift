@@ -1,4 +1,5 @@
 import Cocoa
+import SwiftTerm
 
 final class TerminalViewController: NSViewController, LocalProcessTerminalViewDelegate {
 

@@ -1,8 +1,10 @@
 import Cocoa
+import Highlighter
 
 final class EditorViewController: NSViewController {
 
     private let scrollView = NSScrollView()
+    private var highlighter: Highlighter?
     private let textView = NSTextView()
     private let imageView = NSImageView()
     private let imageContainerView = NSView()
@@ -16,6 +18,12 @@ final class EditorViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        setupHighlighter()
+    }
+
+    private func setupHighlighter() {
+        highlighter = Highlighter()
+        highlighter?.setTheme("atom-one-dark")
     }
 
     private func setupUI() {
@@ -104,6 +112,50 @@ final class EditorViewController: NSViewController {
     private func showText(_ contents: String) {
         textView.string = contents
         scrollView.documentView = textView
+
+        // Apply syntax highlighting
+        if let highlighted = highlighter?.highlight(contents, as: languageForCurrentFile()) {
+            textView.textStorage?.setAttributedString(highlighted)
+        }
+    }
+
+    private func languageForCurrentFile() -> String? {
+        let ext = (currentPath as NSString).pathExtension.lowercased()
+        let languageMap: [String: String] = [
+            "swift": "swift",
+            "js": "javascript",
+            "javascript": "javascript",
+            "ts": "typescript",
+            "typescript": "typescript",
+            "py": "python",
+            "python": "python",
+            "php": "php",
+            "html": "html",
+            "css": "css",
+            "json": "json",
+            "xml": "xml",
+            "yaml": "yaml",
+            "yml": "yaml",
+            "sh": "bash",
+            "bash": "bash",
+            "zsh": "bash",
+            "java": "java",
+            "kt": "kotlin",
+            "kotlin": "kotlin",
+            "rs": "rust",
+            "rust": "rust",
+            "go": "go",
+            "c": "c",
+            "cpp": "cpp",
+            "cc": "cpp",
+            "cxx": "cpp",
+            "h": "c",
+            "hpp": "cpp",
+            "cs": "csharp",
+            "ruby": "ruby",
+            "rb": "ruby"
+        ]
+        return languageMap[ext]
     }
 
     private func showImage(_ image: NSImage) {
