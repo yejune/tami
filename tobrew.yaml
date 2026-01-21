@@ -1,0 +1,19 @@
+name: tami
+language: binary
+description: Terminal-first macOS file navigator with tabs and an embedded terminal
+homepage: https://github.com/yejune/tami
+license: UNLICENSED
+github:
+    user: yejune
+    repo: tami
+    tap_repo: homebrew-tap
+build:
+    command: ./build.sh && mkdir -p dist && ditto -c -k --sequesterRsrc --keepParent build/Tami.app dist/Tami.app.zip
+formula:
+    install: |-
+        prefix.install "Tami.app"
+    test: system "true"
+    caveats: |-
+        Tami has been installed.
+
+        Open it from Finder or run: open Tami.app

@@ -1,0 +1,27 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          chmod +x build.sh
+          CONFIGURATION=Release ./build.sh
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent build/Tami.app dist/Tami.app.zip
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Tami.app.zip
