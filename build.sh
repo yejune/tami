@@ -21,7 +21,12 @@ echo "🔨 Building ${APP_NAME}..."
 
 # Xcode 빌드
 echo "📦 Building with Xcode..."
-xcodebuild -scheme Tami -destination 'platform=macOS' -configuration "${CONFIGURATION}" -derivedDataPath "${DERIVED_DATA}" build
+WORKSPACE=".swiftpm/xcode/package.xcworkspace"
+if [ -d "${WORKSPACE}" ]; then
+    xcodebuild -workspace "${WORKSPACE}" -scheme "${APP_NAME}" -destination 'platform=macOS' -configuration "${CONFIGURATION}" -derivedDataPath "${DERIVED_DATA}" build
+else
+    xcodebuild -scheme "${APP_NAME}" -destination 'platform=macOS' -configuration "${CONFIGURATION}" -derivedDataPath "${DERIVED_DATA}" build
+fi
 
 # 빌드 디렉토리 생성
 rm -rf "${APP_BUNDLE}"
