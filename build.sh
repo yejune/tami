@@ -8,7 +8,7 @@ set -e
 APP_NAME="Tami"
 BUILD_DIR="build"
 CONFIGURATION="${CONFIGURATION:-Debug}"
-DERIVED_DATA="${BUILD_DIR}/DerivedData"
+DERIVED_DATA=".build/DerivedData"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 CONTENTS_DIR="${APP_BUNDLE}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
@@ -24,7 +24,7 @@ echo "📦 Building with Xcode..."
 xcodebuild -scheme Tami -destination 'platform=macOS' -configuration "${CONFIGURATION}" -derivedDataPath "${DERIVED_DATA}" build
 
 # 빌드 디렉토리 생성
-rm -rf "${BUILD_DIR}"
+rm -rf "${APP_BUNDLE}"
 mkdir -p "${MACOS_DIR}"
 mkdir -p "${RESOURCES_DIR}"
 mkdir -p "${FRAMEWORKS_DIR}"
