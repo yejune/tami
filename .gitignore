@@ -1,0 +1,10 @@
+.DS_Store
+.build/
+.claude/
+.mcp.json
+.moai/
+.moai-backups/
+.swiftpm/
+CLAUDE.md
+SwiftTerm/
+build/
